@@ -34,3 +34,13 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+//websocket setup
+import { Server } from "socket.io";
+const io = new Server(server, { cors: { origin: "*" } });
+
+io.on("connection", socket => {
+  socket.on("taskUpdated", data => {
+    socket.broadcast.emit("refreshTasks");
+  });
+});
