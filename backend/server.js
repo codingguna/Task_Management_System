@@ -2,6 +2,11 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import http from "http";
+import { Server } from "socket.io";
+
+import taskRoutes from "./routes/taskRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 
@@ -23,24 +28,31 @@ mongoose
   .catch(err => console.error(err));
 
 // routes
-import taskRoutes from "./routes/taskRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-
 app.use("/api/tasks", taskRoutes);
 app.use("/api/auth", authRoutes);
 
-// server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// create HTTP server
+const server = http.createServer(app);
+
+// socket.io setup
+const io = new Server(server, {
+  cors: { origin: "*" }
 });
 
-//websocket setup
-import { Server } from "socket.io";
-const io = new Server(server, { cors: { origin: "*" } });
-
 io.on("connection", socket => {
+  console.log("Client connected:", socket.id);
+
   socket.on("taskUpdated", data => {
     socket.broadcast.emit("refreshTasks");
   });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
+// start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

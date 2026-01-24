@@ -1,5 +1,12 @@
-import TaskCard from "../components/TaskCard";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-export default function Dashboard({ tasks }) {
-  return tasks.map(task => <TaskCard key={task._id} task={task} />);
+export default function Dashboard() {
+  const { user } = useAuth();
+
+  if (!user) return <Navigate to="/login" />;
+  return <p>Dashboard</p>
+  // return user.role === "admin"
+  //   ? <Navigate to="/admin" />
+  //   : <Navigate to="/member" />;
 }
