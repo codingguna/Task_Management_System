@@ -5,8 +5,7 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   if (!user) return <Navigate to="/login" />;
-  return <p>Dashboard</p>
-  // return user.role === "admin"
-  //   ? <Navigate to="/admin" />
-  //   : <Navigate to="/member" />;
+  return user.role === "admin"
+    ? <Navigate to="/admin" />
+    : <Navigate to="/member" />;
 }

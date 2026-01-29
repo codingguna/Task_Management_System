@@ -11,7 +11,34 @@ const router = express.Router();
  * =========================
  */
 
-// Admin: Create & assign task
+/**
+ * @swagger
+ * /api/tasks:
+ *   post:
+ *     summary: Admin creates and assigns a task
+ *     tags: [Admin Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - assignedTo
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               assignedTo:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Task created successfully
+ */
 router.post("/", auth, isAdmin, async (req, res) => {
   try {
     const task = await Task.create(req.body);
@@ -21,19 +48,63 @@ router.post("/", auth, isAdmin, async (req, res) => {
   }
 });
 
-// Admin: Get ALL tasks
+/**
+ * @swagger
+ * /api/tasks:
+ *   get:
+ *     summary: Admin fetches all tasks
+ *     tags: [Admin Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all tasks
+ */
 router.get("/", auth, isAdmin, async (req, res) => {
   const tasks = await Task.find().populate("assignedTo", "name email");
   res.json(tasks);
 });
 
-router.get("/:id", auth, isAdmin, async (req, res) => {
-  const tasks = await Task.findById(req.params.id);
-  res.json(tasks);
+/**
+ * @swagger
+ * /api/tasks/task/{id}:
+ *   get:
+ *     summary: Admin fetches a task by ID
+ *     tags: [Admin Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Task found
+ *       404:
+ *         description: Task not found
+ */
+router.get("/task/:id", auth, isAdmin, async (req, res) => {
+  const task = await Task.findById(req.params.id);
+  if (!task) return res.status(404).json({ message: "Task not found" });
+  res.json(task);
 });
 
-
-// Admin: Approve completed task
+/**
+ * @swagger
+ * /api/tasks/{id}/approve:
+ *   put:
+ *     summary: Admin approves a completed task
+ *     tags: [Admin Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Task approved
+ */
 router.put("/:id/approve", auth, isAdmin, async (req, res) => {
   const task = await Task.findById(req.params.id);
 
@@ -46,7 +117,22 @@ router.put("/:id/approve", auth, isAdmin, async (req, res) => {
   res.json(task);
 });
 
-// Admin: Delete task
+/**
+ * @swagger
+ * /api/tasks/{id}:
+ *   delete:
+ *     summary: Admin deletes a task
+ *     tags: [Admin Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Task deleted
+ */
 router.delete("/:id", auth, isAdmin, async (req, res) => {
   await Task.findByIdAndDelete(req.params.id);
   res.json({ message: "Task deleted" });
@@ -58,13 +144,51 @@ router.delete("/:id", auth, isAdmin, async (req, res) => {
  * =========================
  */
 
-// Member: Get only assigned tasks
+/**
+ * @swagger
+ * /api/tasks/my:
+ *   get:
+ *     summary: Member fetches assigned tasks
+ *     tags: [Member Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of member tasks
+ */
 router.get("/my", auth, async (req, res) => {
   const tasks = await Task.find({ assignedTo: req.user.id });
   res.json(tasks);
 });
 
-// Member: Update task status (NOT final completion)
+/**
+ * @swagger
+ * /api/tasks/{id}/status:
+ *   put:
+ *     summary: Member updates task status (request completion)
+ *     tags: [Member Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, in_progress, completed_request]
+ *     responses:
+ *       200:
+ *         description: Task status updated
+ *       403:
+ *         description: Access denied
+ */
 router.put("/:id/status", auth, async (req, res) => {
   const { status } = req.body;
 
@@ -75,8 +199,8 @@ router.put("/:id/status", auth, async (req, res) => {
     return res.status(403).json({ message: "Access denied" });
   }
 
-  // allowed statuses for member
-  if (!["pending", "in_progress", "completed_request"].includes(status)) {
+  const allowedStatuses = ["pending", "in_progress", "completed_request"];
+  if (!allowedStatuses.includes(status)) {
     return res.status(400).json({ message: "Invalid status update" });
   }
 
