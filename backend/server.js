@@ -9,6 +9,7 @@ import { setupSwagger } from "./swagger.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import adminuserRoutes from "./routes/adminuserRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ mongoose
 app.use("/api/tasks", taskRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminuserRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 /* -------------------- HTTP + SOCKET -------------------- */
 const server = http.createServer(app);

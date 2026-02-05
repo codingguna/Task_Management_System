@@ -18,7 +18,9 @@ const TaskManager = () => {
   };
 
   useEffect(() => {
-    loadTasks();
+    (async () => {
+      await loadTasks();
+    })();
   }, []);
 
   const approveTask = async (id) => {

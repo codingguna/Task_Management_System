@@ -2,6 +2,10 @@ import express from "express";
 import Task from "../models/Task.js";
 import auth from "../middleware/auth.js";
 import { isAdmin } from "../middleware/roleMiddleware.js";
+import { io, getSocketId } from "../server.js";
+import User from "../models/User.js";
+import Notification from "../models/Notification.js";
+
 
 const router = express.Router();
 
@@ -42,6 +46,24 @@ const router = express.Router();
 router.post("/", auth, isAdmin, async (req, res) => {
   try {
     const task = await Task.create(req.body);
+
+    // Save notification
+    await Notification.create({
+      user: task.assignedTo,
+      title: "New Task Assigned",
+      message: `You have been assigned: ${task.title}`,
+      type: "TASK_ASSIGNED",
+      relatedId: task._id,
+    });
+
+     // 🔔 SOCKET: notify assigned member
+    const socketId = getSocketId(task.assignedTo.toString());
+    if (socketId) {
+      io.to(socketId).emit("task_assigned", {
+        taskId: task._id,
+        title: task.title,
+      });
+    }
     res.status(201).json(task);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -113,6 +135,22 @@ router.put("/:id/approve", auth, isAdmin, async (req, res) => {
   task.status = "completed";
   task.verifiedByAdmin = true;
   await task.save();
+
+  await Notification.create({
+  user: task.assignedTo,
+  title: "Task Approved",
+  message: `Your task "${task.title}" was approved`,
+  type: "TASK_APPROVED",
+  relatedId: task._id,
+});
+
+const socketId = getSocketId(task.assignedTo.toString());
+if (socketId) {
+  io.to(socketId).emit("task_approved", {
+        taskId: task._id,
+        title: task.title,
+      });
+}
 
   res.json(task);
 });
@@ -206,6 +244,29 @@ router.put("/:id/status", auth, async (req, res) => {
 
   task.status = status;
   await task.save();
+
+  if (status === "completed_request") {
+    const admins = await User.find({ role: "admin" });
+      
+    admins.forEach(async admin => {
+      
+      await Notification.create({
+        user: admin._id,
+        title: "Completion Requested",
+        message: `Task completion requested: ${task.title}`,
+        type: "TASK_COMPLETION",
+        relatedId: task._id,
+      });
+
+      const socketId = getSocketId(admin._id.toString());
+      if (socketId) {
+        io.to(socketId).emit("task_completion_request", {
+          taskId: task._id,
+          title: task.title,
+        });
+      }
+    });
+  }
 
   res.json(task);
 });

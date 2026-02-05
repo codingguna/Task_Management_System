@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../services/api";
 import toast from "react-hot-toast";
-import Topbar from "./Topbar";
+import Topbar from "../components/Topbar";
+import socket from "../services/socket";
 
 const statusStyle = {
   pending: "bg-gray-100 text-gray-700",
@@ -24,14 +25,35 @@ const MemberDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+  if (!user) return;
+
+  socket.connect();
+  socket.emit("register", user.id);
+
+  socket.on("task_assigned", data => {
+    toast.success(`📋 New task assigned: ${data.title}`);
     fetchMyTasks();
+  });
+
+  socket.on("task_approved", data => {
+    toast.success(`✅ Task approved: ${data.title}`);
+    fetchMyTasks();
+  });
+
+  return () => {
+    socket.off("task_assigned");
+    socket.off("task_approved");
+    socket.disconnect();
+  };
   }, []);
 
   const fetchMyTasks = async () => {
     try {
       const res = await api.get("/tasks/my");
       setTasks(res.data);
-    } catch {
+    } catch (err) {
+      console.log(err);
       toast.error("Failed to fetch tasks");
     } finally {
       setLoading(false);
